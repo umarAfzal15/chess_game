@@ -9,7 +9,10 @@ using namespace std;
 void initializeGrid(int chessGrid[8][8]);
 void drawBorad(int startX, int startY, int squareSize);
 void loadPieceTextures(Texture2D pieceTextures[27]);
-void placePieces(int chessGrid[8][8], Texture2D pieceTextures[27], int startX, int startY, int squareSize, int row, int col, int mouseX, int mouseY);
+void placePieces(int chessGrid[8][8], Texture2D pieceTextures[27], int startX, int startY, int squareSize, int &isMousePressed, int &takeRow, int &takeCol, int &changeRow, int &changeCol);
+bool rulesForPieces(int takeRow, int takeCol, int row, int col, int chessGrid[8][8]);
+bool pawnRule(int takeRow, int takeCol, int row, int col, int pieceColor);
+bool knightRule(int takeRow, int takeCol, int row, int col, int pieceColor);
 void unloadPieceTextures(Texture2D pieceTextures[27]);
 
 int main() {
@@ -19,7 +22,10 @@ int main() {
 
     //int size = 8;
     int chessGrid[8][8] = {0};
-    int isMousePressed  = 0;
+    
+    int isMousePressed = 0;
+    int takeRow = -1, takeCol = -1;
+    int changeRow = -1, changeCol = -1;
 
     Texture2D pieceTextures[27] = {0};
     loadPieceTextures(pieceTextures);
@@ -35,33 +41,18 @@ int main() {
         BeginDrawing();
         ClearBackground(GetColor(0x262421FF));
 
-
         drawBorad(startX, startY, squareSize);
-        
-        if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT)){
+        placePieces(chessGrid, pieceTextures, startX, startY, squareSize, isMousePressed, takeRow, takeCol, changeRow, changeCol);
 
-            if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)){
-                isMousePressed = 0;
-            }
+        int mouseX = GetMouseX(); // Get mouse position X
+        int mouseY = GetMouseY();
 
-            placePieces(chessGrid, pieceTextures, startX, startY, squareSize, -1, -1, -1, -1);
-        }else if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)){
+        int col;
+        int row;
+        col = (mouseX - startX)/squareSize;
+        row = (mouseY - startY)/squareSize;
 
-            int mouseX = GetMouseX(); // Get mouse position X
-            int mouseY = GetMouseY();
-
-            DrawText(TextFormat("X: %d, Y: %d", mouseX, mouseY), 20, 20, 30, GetColor(0xFFFFFFFF));
-
-            int col;
-            int row;
-            if(isMousePressed == 0){
-                isMousePressed = 1;
-                col = (mouseX - startX)/squareSize;
-                row = (mouseY - startY)/squareSize;
-            }
-            
-            placePieces(chessGrid, pieceTextures, startX, startY, squareSize, row, col, mouseX, mouseY);
-        }
+        DrawText(TextFormat("X: %d, Y: %d, col: %d, row: %d", mouseX, mouseY, col, row), 20, 20, 30, GetColor(0xFFFFFFFF));
 
         EndDrawing();
     }
@@ -143,16 +134,54 @@ void loadPieceTextures(Texture2D pieceTextures[27]) {
     }
 }
 
-void placePieces(int chessGrid[8][8], Texture2D pieceTextures[27], int startX, int startY, int squareSize, int row, int col, int mouseX, int mouseY){
+void placePieces(int chessGrid[8][8], Texture2D pieceTextures[27], int startX, int startY, int squareSize,
+                  int &isMousePressed, int &takeRow, int &takeCol, int &changeRow, int &changeCol){
+
+    int mouseX = GetMouseX();
+    int mouseY = GetMouseY();
+    int col = -1, row = -1;
+
+    if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)){
+
+        if(isMousePressed == 0){
+            isMousePressed = 1;
+            takeCol = (mouseX - startX)/squareSize;
+            takeRow = (mouseY - startY)/squareSize;
+        }
+    }
+
+    col = (mouseX - startX)/squareSize;
+    row = (mouseY - startY)/squareSize;
+
+    
+    if((takeRow != -1) && (takeCol != -1) && rulesForPieces(takeRow, takeCol, row, col, chessGrid)){
+        if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)){
+
+            isMousePressed = 0;
+
+            if((col >= 0 && col <= 7) && (row >= 0 && row <= 7) && (mouseX > 180 && mouseX < 820) && (mouseY > 80 && mouseY < 720)){
+                int temp = chessGrid[row][col];
+                chessGrid[row][col] = chessGrid[takeRow][takeCol];
+                chessGrid[takeRow][takeCol] = temp;
+            }
+
+            takeRow = -1;
+            takeCol = -1;
+        }
+    }else if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)){
+        isMousePressed = 0;
+        takeRow = -1;
+        takeCol = -1;
+    }
 
     for(int i = 0; i < 8; i++){
         for(int j = 0; j < 8; j++){
 
             int currentX, currentY;
 
-            if(i == row && j == col){
+            if(i == takeRow && j == takeCol){
                 currentX = mouseX - 40;
-                currentY = mouseY- 40;
+                currentY = mouseY - 40;
             } else {
                 currentX = startX + (j * squareSize);
                 currentY = startY + (i * squareSize);
@@ -164,6 +193,91 @@ void placePieces(int chessGrid[8][8], Texture2D pieceTextures[27], int startX, i
             }
         }
     }
+}
+
+bool rulesForPieces(int takeRow, int takeCol, int row, int col, int chessGrid[8][8]){
+    int pieceColor =  chessGrid[takeRow][takeCol]/10;
+    int pieceType = chessGrid[takeRow][takeCol]%10;
+    //bool return1;
+    if(pieceType == 1){
+        return pawnRule(takeRow, takeCol, row, col, pieceColor);
+    }
+    else if(pieceType == 2){
+        return knightRule(takeRow, takeCol, row, col, pieceColor);
+    }
+
+    return false;
+}
+
+bool pawnRule(int takeRow, int takeCol, int row, int col, int pieceColor){
+
+    if(pieceColor == 1){
+        if((takeRow == 1) && ((col == takeCol) && (row == takeRow + 1 || row == takeRow + 2))){
+            return true;
+        }
+        else if((takeRow != 1) && ((col == takeCol)) && (row == takeRow + 1)){
+            return true;
+        }
+        else {
+            return false;
+        }
+    }else if(pieceColor == 2){
+        if((takeRow == 6) && ((col == takeCol) && (row == takeRow - 1 || row == takeRow - 2))){
+            return true;
+        }
+        else if((takeRow != 6) && ((col == takeCol)) && (row == takeRow - 1)){
+            return true;
+        }
+        else {
+            return false;
+        }
+    }else{
+        return false;
+    }
+
+    // int diff = row - takeRow;
+    // if(diff < 0) diff = -diff; // absolute value, so direction doesn't matter yet
+
+    // if(takeRow == 1 || takeRow == 6){
+    //     // starting row — allow 1 or 2 squares
+    //     return (diff == 1 || diff == 2);
+    // } else {
+    //     // any other row — only 1 square
+    //     return (diff == 1);
+    // }
+}
+
+bool knightRule(int takeRow, int takeCol, int row, int col, int pieceColor){
+
+    if(pieceColor == 1){
+        if((row >= 0 && row <= 7) && (col >= 0 && col <= 7) && 
+            (((row == takeRow + 2) && (col == takeCol -1 || col == takeCol +1))||
+            ((row == takeRow - 2) && (col == takeCol - 1 || col == takeCol + 1)) ||
+            ((col == takeCol - 2) && (row == takeRow - 1 || row == takeRow + 1)) || 
+            ((col == takeCol + 2) && (row == takeRow - 1 || row == takeRow + 1)) ))
+            {
+            
+            return true;
+
+        }else {
+            return false;
+        }
+    }else if(pieceColor == 2){
+        if((row >= 0 && row <= 7) && (col >= 0 && col <= 7) && 
+            (((row == takeRow - 2) && (col == takeCol -1 || col == takeCol +1))||
+            ((row == takeRow + 2) && (col == takeCol - 1 || col == takeCol + 1)) ||
+            ((col == takeCol + 2) && (row == takeRow - 1 || row == takeRow + 1)) || 
+            ((col == takeCol - 2) && (row == takeRow - 1 || row == takeRow + 1)) ))
+            {
+            
+            return true;
+
+        }else {
+            return false;
+        }
+    }
+
+    return false;
 }
 
 void unloadPieceTextures(Texture2D pieceTextures[27]) {
