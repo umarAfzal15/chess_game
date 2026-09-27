@@ -152,7 +152,7 @@ void placePieces(int chessGrid[8][8], Texture2D pieceTextures[27], int startX, i
 
             if(i == row && j == col){
                 currentX = mouseX - 40;
-                currentY = mouseY - 40;
+                currentY = mouseY- 40;
             } else {
                 currentX = startX + (j * squareSize);
                 currentY = startY + (i * squareSize);
