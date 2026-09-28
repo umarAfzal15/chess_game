@@ -13,6 +13,7 @@ private:
     // drag state
     bool isMousePressed;
     int takeRow, takeCol;   // square the piece was picked up from (-1 = nothing picked)
+    int turn = 2;
  
     // helpers used only inside the class
     void initGrid();
@@ -20,11 +21,16 @@ private:
     bool isInsideBoard(int x, int y) const;
     bool pawnRule(int row, int col, int color) const;
     bool knightRule(int row, int col, int color) const;
+    bool rookRule(int row, int col, int color) const;
+    bool bishopRule(int row, int col, int color) const;
+    bool queenRule(int row, int col, int color) const;
+    bool kingRule(int row, int col, int color) const;
  
 public:
     Board(int startX, int startY, int squareSize);
     ~Board();
  
+    void setTurn(int pieceColor);
     void draw() const;           // draws the squares
     void handleInput();          // mouse pick up / drop logic
     void drawPieces() const;     // draws the pieces (and the one being dragged)
@@ -137,6 +143,10 @@ void Board::drawPieces() const {
     int mouseX = GetMouseX();
     int mouseY = GetMouseY();
  
+    int draggedPiece = 0;
+    int draggedX = 0;
+    int draggedY = 0;
+
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
             int piece = grid[i][j];
@@ -152,8 +162,19 @@ void Board::drawPieces() const {
                 currentY = startY + i * squareSize;
             }
  
+            if (i == takeRow && j == takeCol) {
+                draggedX = currentX;
+                draggedY = currentY;
+                draggedPiece = piece;
+                continue;
+            }
+
             DrawTexture(textures[piece], currentX, currentY, WHITE);
         }
+    }
+
+    if (takeRow != -1 && takeCol != -1) {
+        DrawTexture(textures[draggedPiece], draggedX, draggedY, WHITE);
     }
 }
 
@@ -172,7 +193,8 @@ void Board::handleInput() {
     int mouseY = GetMouseY();
     int col = (mouseX - startX) / squareSize;
     int row = (mouseY - startY) / squareSize;
- 
+    int pieceColor =  grid[takeRow][takeCol]/10;
+
     // mouse just pressed: remember which square we picked up
     if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && !isMousePressed) {
         isMousePressed = true;
@@ -187,10 +209,16 @@ void Board::handleInput() {
         if (takeRow != -1 && takeCol != -1 &&
             isInsideBoard(mouseX, mouseY) &&
             isValidMove(row, col)) {
+
+            if(grid[row][col] != 0){
+                grid[row][col] = 0;
+            }
  
             int temp = grid[row][col];
             grid[row][col] = grid[takeRow][takeCol];
             grid[takeRow][takeCol] = temp;
+
+            setTurn(pieceColor);
         }
  
         isMousePressed = false;
@@ -205,6 +233,11 @@ bool Board::isValidMove(int row, int col) const {
 
     int pieceColor =  grid[takeRow][takeCol]/10;
     int pieceType = grid[takeRow][takeCol]%10;
+
+    if(pieceColor != turn){
+        return false;
+    }
+
     //bool return1;
     if(pieceType == 1){
         return pawnRule(row, col, pieceColor);
@@ -212,27 +245,45 @@ bool Board::isValidMove(int row, int col) const {
     else if(pieceType == 2){
         return knightRule(row, col, pieceColor);
     }
+    else if(pieceType == 3){
+        return bishopRule(row, col, pieceColor);
+    }
 
     return false;
 }
 
+void Board::setTurn(int pieceColor){
+    turn = (pieceColor == 1) ? 2 : 1;
+}
+
 bool Board::pawnRule(int row, int col, int color) const {
     if(color == 1){
-        if((takeRow == 1) && ((col == takeCol) && (row == takeRow + 1 || row == takeRow + 2))){
+        if((takeRow == 1) && ((col == takeCol) && (row == takeRow + 1 || row == takeRow + 2)) && (grid[row][col] == 0)){
+
             return true;
         }
-        else if((takeRow != 1) && ((col == takeCol)) && (row == takeRow + 1)){
+        else if((takeRow != 1) && ((col == takeCol)) && (row == takeRow + 1) && (grid[row][col] == 0)){
             return true;
+        }
+        else if(((row == takeRow + 1) && ((col == takeCol - 1) || col == takeCol + 1)) && grid[row][col] != 0){
+            if(color != (grid[row][col]/10)){
+                return true;
+            }
         }
         else {
             return false;
         }
     }else if(color == 2){
-        if((takeRow == 6) && ((col == takeCol) && (row == takeRow - 1 || row == takeRow - 2))){
+        if((takeRow == 6) && ((col == takeCol) && (row == takeRow - 1 || row == takeRow - 2)) && (grid[row][col] == 0)){
             return true;
         }
-        else if((takeRow != 6) && ((col == takeCol)) && (row == takeRow - 1)){
+        else if((takeRow != 6) && ((col == takeCol)) && (row == takeRow - 1) && (grid[row][col] == 0)){
             return true;
+        }
+        else if(((row == takeRow - 1) && ((col == takeCol - 1) || col == takeCol + 1)) && grid[row][col] != 0){
+            if(color != (grid[row][col]/10)){
+                return true;
+            }
         }
         else {
             return false;
@@ -240,38 +291,63 @@ bool Board::pawnRule(int row, int col, int color) const {
     }else{
         return false;
     }
+
+    return false;
 }
  
 bool Board::knightRule(int row, int col, int color) const {
-    if(color == 1){
-        if((row >= 0 && row <= 7) && (col >= 0 && col <= 7) && 
-            (((row == takeRow + 2) && (col == takeCol -1 || col == takeCol +1))||
-            ((row == takeRow - 2) && (col == takeCol - 1 || col == takeCol + 1)) ||
-            ((col == takeCol - 2) && (row == takeRow - 1 || row == takeRow + 1)) || 
-            ((col == takeCol + 2) && (row == takeRow - 1 || row == takeRow + 1)) ))
-            {
-            
-            return true;
 
-        }else {
-            return false;
+    if((row >= 0 && row <= 7) && (col >= 0 && col <= 7) && 
+        (((row == takeRow + 2) && (col == takeCol -1 || col == takeCol +1))||
+        ((row == takeRow - 2) && (col == takeCol - 1 || col == takeCol + 1)) ||
+        ((col == takeCol - 2) && (row == takeRow - 1 || row == takeRow + 1)) || 
+        ((col == takeCol + 2) && (row == takeRow - 1 || row == takeRow + 1)) ))
+        {
+        
+        return true;
+
+    }
+    else if(((row == takeRow + 1) && ((col == takeCol - 1) || col == takeCol + 1)) && grid[row][col] != 0){
+        if(color != (grid[row][col]/10)){
+            return true;
         }
-    }else if(color == 2){
-        if((row >= 0 && row <= 7) && (col >= 0 && col <= 7) && 
-            (((row == takeRow - 2) && (col == takeCol -1 || col == takeCol +1))||
-            ((row == takeRow + 2) && (col == takeCol - 1 || col == takeCol + 1)) ||
-            ((col == takeCol + 2) && (row == takeRow - 1 || row == takeRow + 1)) || 
-            ((col == takeCol - 2) && (row == takeRow - 1 || row == takeRow + 1)) ))
-            {
-            
-            return true;
+    }
+    else {
+        return false;
+    }
 
-        }else {
+    return false;
+}
+
+bool Board::bishopRule(int row, int col, int color) const {
+
+    int rowDef = row - takeRow;
+    int colDef = col - takeCol;
+
+    if((abs(rowDef) != abs(colDef)) || rowDef == 0){
+        return false;
+    }
+
+    int stepRow = (rowDef > 0) ? 1 : -1;
+    int stepCol = (colDef > 0) ? 1 : -1;
+
+    int currentRow;
+    int currentCol;
+
+    for(int step = 1; step < abs(rowDef); step++){
+        currentRow = takeRow + step * stepRow;
+        currentCol = takeCol + step * stepCol;
+
+        if(grid[currentRow][currentCol] != 0){
             return false;
         }
     }
 
-    return false;
+    if((grid[currentRow + 1][currentCol + 1] != 0) && (color == grid[currentRow + 1][currentCol + 1]/10)){
+        return true;
+    }
+
+    return true;
 }
 
 
