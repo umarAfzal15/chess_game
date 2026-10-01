@@ -20,8 +20,14 @@ private:
     bool rookRule(int row, int col, int color) const;
     bool queenRule(int row, int col, int color) const;
     bool kingRule(int row, int col, int color) const;
+    bool isCheck(int color);
+    bool checkMate(int color);
  
 public:
+
+    bool checkmate = false;
+    bool stalemate = false;
+
     Board(int startX, int startY, int squareSize);
     ~Board();
  

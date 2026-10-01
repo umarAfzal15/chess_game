@@ -6,8 +6,7 @@ void Board::handleInput() {
     int mouseY = GetMouseY();
     int col = (mouseX - startX) / squareSize;
     int row = (mouseY - startY) / squareSize;
-    int pieceColor =  grid[takeRow][takeCol]/10;
-
+    
     // mouse just pressed: remember which square we picked up
     if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && !isMousePressed) {
         isMousePressed = true;
@@ -23,19 +22,36 @@ void Board::handleInput() {
             isInsideBoard(mouseX, mouseY) &&
             isValidMove(row, col)) {
 
-            if(grid[row][col] != 0){
-                grid[row][col] = 0;
-            }
- 
-            int temp = grid[row][col];
-            grid[row][col] = grid[takeRow][takeCol];
-            grid[takeRow][takeCol] = temp;
+            int pieceColor = grid[takeRow][takeCol] / 10;
+            int fromRow = takeRow, fromCol = takeCol;
 
-            setTurn(pieceColor);
+            int captured = grid[row][col];
+            grid[row][col] = grid[fromRow][fromCol];
+            grid[fromRow][fromCol] = 0;
+
+            if (isCheck(pieceColor)) {
+                grid[fromRow][fromCol] = grid[row][col];
+                grid[row][col] = captured;
+            } else {
+                setTurn(pieceColor);
+
+                int nextColor = (pieceColor == 1) ? 2 : 1;
+
+                if(checkMate(pieceColor)){        // opponent has no legal move
+                    if(isCheck(nextColor)){       // ...and their king is attacked
+                        checkmate = true;
+                    }
+                    else {                        // ...and their king is NOT attacked
+                        stalemate = true;
+                    }
+                }
+            }
+
         }
- 
+
         isMousePressed = false;
         takeRow = -1;
         takeCol = -1;
     }
+
 }

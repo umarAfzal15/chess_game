@@ -1,6 +1,4 @@
 #include <iostream>
-#include <cstdio>
-#include <string>
 #include "raylib.h"
 #include "board.h"
 

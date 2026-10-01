@@ -1,6 +1,6 @@
 #include <string>
 #include "raylib.h"
-#include "master_class.h"
+#include "board.h"
 
 
 void Board::draw() const {
