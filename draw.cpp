@@ -25,6 +25,17 @@ void Board::draw() const {
             DrawRectangle(currentX, currentY, squareSize, squareSize, squareColor);
         }
     }
+
+    if(promoting){
+        int types[4] = {5, 4, 3, 2};
+        int menuY = (promoColor == 2) ? (startY - squareSize) : (startY + 8*squareSize);
+
+        for(int j = 0; j < 4; j++){
+            int currentX = startX + ((promoStart + j) * squareSize);
+
+            DrawTexture(textures[promoColor*10 + types[j]], currentX, menuY, WHITE);
+        }
+    }
 }
 
 void Board::drawPieces() const {

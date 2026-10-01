@@ -9,6 +9,12 @@ private:
     bool isMousePressed;
     int takeRow, takeCol;   // square the piece was picked up from (-1 = nothing picked)
     int turn = 2;
+
+    bool promoting = false;
+    int promoRow = -1;
+    int promoCol = -1;
+    int promoColor = 0;
+    int promoStart = 0;
  
     // helpers used only inside the class
     void initGrid();
